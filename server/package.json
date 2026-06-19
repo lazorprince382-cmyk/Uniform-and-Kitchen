@@ -1,0 +1,27 @@
+{
+  "name": "toks-uniform-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:create": "node src/db/create-db.js",
+    "db:setup": "node src/db/create-db.js && node src/db/setup.js",
+    "db:migrate-school": "node src/db/migrate-school.js",
+    "db:seed-school": "node src/db/seed-school.js",
+    "db:update-catalog": "node src/db/update-catalog.js",
+    "db:migrate-sizes": "node src/db/migrate-inventory-sizes.js",
+    "db:migrate-gender": "node src/db/migrate-gender.js",
+    "db:reset-inventory": "node src/db/reset-inventory.js",
+    "db:dedupe-categories": "node src/db/dedupe-categories.js",
+    "db:rename-products": "node src/db/rename-product.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "toks-uniform-inventory",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install && cd ../kitchen && npm install",
+    "db:setup": "cd server && npm run db:setup",
+    "db:update-catalog": "cd server && npm run db:update-catalog",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:kitchen\" \"npm run dev:client\"",
+    "dev:all-systems": "concurrently \"npm run dev\" \"npm run dev --prefix \\\"C:/Users/PRINCE/Documents/ocean kitchen\\\"\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:kitchen": "cd kitchen && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev:gateway": "node render-server.js",
+    "build": "cd client && npm run build",
+    "build:production": "npm run install:all && npm run build",
+    "start": "node start-unified.js",
+    "start:pm2": "pm2 start ecosystem.config.js --env production",
+    "render:start": "node start-unified.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

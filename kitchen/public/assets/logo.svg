@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+  <rect width="120" height="120" rx="16" fill="#0f172a"/>
+  <path d="M30 68c0-16 12-28 30-28s30 12 30 28v8H30v-8z" fill="#38bdf8"/>
+  <ellipse cx="60" cy="42" rx="22" ry="18" fill="#f8fafc"/>
+  <path d="M44 78h32v6a8 8 0 0 1-8 8H52a8 8 0 0 1-8-8v-6z" fill="#fbbf24"/>
+  <text x="60" y="102" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="9" font-weight="600">Ocean of Knowledge</text>
+</svg>

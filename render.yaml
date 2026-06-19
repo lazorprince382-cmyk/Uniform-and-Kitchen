@@ -1,0 +1,69 @@
+services:
+  - type: web
+    name: toks-school-unified
+    runtime: node
+    plan: free
+    
+    # Build step
+    buildCommand: >
+      npm run install:all &&
+      cd client &&
+      npm run build &&
+      cd ..
+    
+    # Start command
+    startCommand: node start-unified.js
+    
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: 3000
+      
+      - key: UNIFORM_API_PORT
+        value: 5001
+      
+      - key: KITCHEN_API_PORT
+        value: 5002
+      
+      # Uniform Backend Database
+      - key: UNIFORM_DATABASE_URL
+        fromDatabase:
+          name: toks_uniform
+          property: connectionString
+      
+      # Kitchen Backend Database
+      - key: KITCHEN_DATABASE_URL
+        fromDatabase:
+          name: kitchen_db
+          property: connectionString
+      
+      # Secrets (change these!)
+      - key: JWT_SECRET
+        sync: false
+      
+      - key: SESSION_SECRET
+        sync: false
+      
+      - key: VITE_KITCHEN_URL
+        value: https://toks-school-unified.onrender.com/kitchen
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Logging
+    logRetentionDays: 7
+
+  # Uniform PostgreSQL Database
+  - type: pserv
+    name: toks_uniform
+    ipAllowList: [] # Allow all IPs (Render-to-Render only)
+    plan: free
+
+  # Kitchen PostgreSQL Database
+  - type: pserv
+    name: kitchen_db
+    ipAllowList: [] # Allow all IPs (Render-to-Render only)
+    plan: free

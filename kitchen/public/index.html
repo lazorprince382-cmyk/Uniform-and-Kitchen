@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- If you open this site with Live Server or "Open in browser" (not Node), set the Kitchen API URL (same host/port you use for `node server.js`, no trailing slash): -->
+  <!-- <meta name="kitchen-api-base" content="http://localhost:3000" /> -->
+  <title>Kitchen Management — The Ocean of Knowledge School</title>
+  <!-- Hide dashboard HTML until session is verified (prevents flash of unstyled content) -->
+  <style id="kitchen-boot-css">
+    #app-root { display: none !important; }
+    html.kitchen-authed #app-root { display: block !important; }
+    html.kitchen-authed .auth-redirect { display: none !important; }
+    .auth-redirect-fallback { display: none; }
+    html.kitchen-redirecting .auth-redirect-fallback { display: block; }
+    .auth-redirect {
+      min-height: 100vh;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      font-size: 1.05rem;
+      color: #5c6b7a;
+      background: #f4f6f9;
+    }
+  </style>
+  <script src="config.js"></script>
+  <script>
+    (function () {
+      function kitchenAssetBase() {
+        var fromConfig =
+          window.KITCHEN_BASE_PATH != null ? String(window.KITCHEN_BASE_PATH).trim() : '';
+        if (fromConfig) return fromConfig.replace(/\/$/, '');
+        if (window.location.pathname.indexOf('/kitchen') === 0) return '/kitchen';
+        return '';
+      }
+      window.__kitchenAssetBase = kitchenAssetBase;
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = kitchenAssetBase() + '/styles.css';
+      document.head.appendChild(css);
+    })();
+  </script>
+  <script>
+    (function () {
+      function unifiedLoginUrl() {
+        const fromConfig =
+          window.KITCHEN_UNIFIED_LOGIN_URL != null ? String(window.KITCHEN_UNIFIED_LOGIN_URL).trim() : '';
+        if (fromConfig) return fromConfig;
+        const { protocol, hostname } = window.location;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return 'http://localhost:3000/login?system=kitchen';
+        }
+        return protocol + '//' + hostname + ':8088/login?system=kitchen';
+      }
+
+      function goUnifiedLogin(opts) {
+        opts = opts || {};
+        document.documentElement.classList.add('kitchen-redirecting');
+        var status = document.querySelector('#auth-redirect > p');
+        if (status) status.textContent = 'Redirecting to sign in…';
+        const base = unifiedLoginUrl();
+        const sep = base.includes('?') ? '&' : '?';
+        var url = base + sep + 'next=' + encodeURIComponent(window.location.href);
+        if (opts.reason === 'timeout') url += '&reason=timeout';
+        window.location.replace(url);
+      }
+
+      window.__kitchenGoUnifiedLogin = goUnifiedLogin;
+
+      let apiBase = (window.KITCHEN_API_BASE != null ? String(window.KITCHEN_API_BASE) : '').trim().replace(/\/$/, '');
+      if (!apiBase && window.location.pathname.indexOf('/kitchen') === 0) {
+        apiBase = '/kitchen';
+      }
+      const meUrl = (apiBase ? apiBase : '') + '/api/auth/me';
+
+      function loadKitchenApp(user) {
+        window.__kitchenAuthedUser = user;
+        document.documentElement.classList.add('kitchen-authed');
+        var root = document.getElementById('app-root');
+        if (root) root.classList.remove('is-hidden');
+        if (document.querySelector('script[data-kitchen-app]')) return;
+        var s = document.createElement('script');
+        s.src = (window.__kitchenAssetBase ? window.__kitchenAssetBase() : '/kitchen') + '/app.js';
+        s.dataset.kitchenApp = '1';
+        document.body.appendChild(s);
+      }
+
+      function checkSession(attempt) {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () {
+          ctrl.abort();
+        }, 5000);
+        return fetch(meUrl, { credentials: 'include', signal: ctrl.signal })
+          .then(function (res) {
+            clearTimeout(timer);
+            if (!res.ok) {
+              if (res.status >= 500) throw new Error('Kitchen server error');
+              return null;
+            }
+            return res.json().catch(function () {
+              return null;
+            });
+          })
+          .then(function (data) {
+            if (data && data.user) {
+              loadKitchenApp(data.user);
+              return;
+            }
+            var maxAttempts = new URLSearchParams(window.location.search).get('fresh') ? 5 : 2;
+            if (attempt < maxAttempts) {
+              return new Promise(function (resolve) {
+                setTimeout(resolve, 350);
+              }).then(function () {
+                return checkSession(attempt + 1);
+              });
+            }
+            window.__kitchenGoUnifiedLogin();
+          })
+          .catch(function () {
+            clearTimeout(timer);
+            if (attempt < 3) {
+              return new Promise(function (resolve) {
+                setTimeout(resolve, 350);
+              }).then(function () {
+                return checkSession(attempt + 1);
+              });
+            }
+            window.__kitchenGoUnifiedLogin();
+          });
+      }
+
+      checkSession(0);
+    })();
+
+    if (window.KITCHEN_BASE_PATH) {
+      const base = document.createElement('base');
+      base.href = window.KITCHEN_BASE_PATH;
+      document.head.appendChild(base);
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="auth-redirect" class="auth-redirect" role="status" aria-live="polite">
+    <p>Loading kitchen…</p>
+    <p class="auth-redirect-fallback">
+      <button type="button" class="btn primary" id="auth-redirect-btn">Continue to login</button>
+    </p>
+  </div>
+
+  <div id="app-root" class="app-root is-hidden">
+  <div class="app-shell" id="app-shell">
+    <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-brand">
+        <img src="assets/school-logo.png" alt="The Ocean of Knowledge School logo" class="sidebar-logo" />
+        <div>
+          <div class="sidebar-title">Kitchen</div>
+          <div class="sidebar-sub">Ocean of Knowledge</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-tab="dashboard"><span class="nav-ic" aria-hidden="true">◆</span> Dashboard</button>
+        <button type="button" class="nav-item" data-tab="inventory"><span class="nav-ic" aria-hidden="true">▣</span> Inventory</button>
+        <button type="button" class="nav-item" data-tab="meals"><span class="nav-ic" aria-hidden="true">◇</span> Meals</button>
+        <button type="button" class="nav-item" data-tab="menu"><span class="nav-ic" aria-hidden="true">☷</span> Menu planner</button>
+        <button type="button" class="nav-item" data-tab="prepare"><span class="nav-ic" aria-hidden="true">✳</span> Prepare meal</button>
+        <button type="button" class="nav-item" data-tab="procurement" data-require="full"><span class="nav-ic" aria-hidden="true">⎔</span> Procurement</button>
+        <button type="button" class="nav-item" data-tab="budget" data-require="full"><span class="nav-ic" aria-hidden="true">₿</span> Budget &amp; costs</button>
+        <button type="button" class="nav-item" data-tab="serving" data-require="full"><span class="nav-ic" aria-hidden="true">◎</span> Serving &amp; attendance</button>
+        <button type="button" class="nav-item" data-tab="reports" data-require="full"><span class="nav-ic" aria-hidden="true">≋</span> Reports</button>
+        <button type="button" class="nav-item" data-tab="alerts"><span class="nav-ic" aria-hidden="true">⚠</span> Alerts</button>
+        <button type="button" class="nav-item" data-tab="settings"><span class="nav-ic" aria-hidden="true">⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="btn sidebar-kitchen-btn" id="btn-kitchen-mode">Kitchen view</button>
+        <p class="sidebar-hint muted">Larger touch targets for service line</p>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <button type="button" class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+          <span class="nav-burger-line" aria-hidden="true"></span>
+          <span class="nav-burger-line" aria-hidden="true"></span>
+          <span class="nav-burger-line" aria-hidden="true"></span>
+        </button>
+        <div class="topbar-school">
+          <h1 class="topbar-h1">Kitchen Management</h1>
+          <p class="topbar-tag">The Ocean of Knowledge School · Up with Skills</p>
+        </div>
+        <div class="topbar-meta">
+          <span class="user-pill" id="user-display-name">—</span>
+          <span class="role-pill" id="role-display">—</span>
+          <button type="button" class="btn secondary btn-sm" id="btn-logout">Log out</button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <section id="dashboard" class="panel active">
+          <div class="dash-header">
+            <div>
+              <h2 class="panel-title" id="dash-greeting">Good day</h2>
+              <p class="muted" id="dash-sub">Here's what's happening in your kitchen today.</p>
+            </div>
+            <div class="dash-date" id="dash-date-pill"></div>
+          </div>
+          <div class="dash-stats">
+            <div class="stat-card">
+              <div class="stat-label">Planned portions today</div>
+              <div class="stat-value" id="dash-stat-planned">—</div>
+              <p class="stat-foot muted">From serving &amp; attendance</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Food cost today</div>
+              <div class="stat-value" id="dash-stat-cost">—</div>
+              <p class="stat-foot muted">Meal preparations (UGX)</p>
+            </div>
+            <div class="stat-card stat-warn">
+              <div class="stat-label">Low stock SKUs</div>
+              <div class="stat-value" id="dash-stat-low">—</div>
+              <a href="#" class="tab-link stat-link" data-tab="alerts">View alerts →</a>
+            </div>
+            <div class="stat-card stat-alert" data-require="full">
+              <div class="stat-label">Allergy watch list</div>
+              <div class="stat-value" id="dash-stat-allergy">—</div>
+              <a href="#" class="tab-link stat-link" data-tab="settings">Manage pupils →</a>
+            </div>
+          </div>
+          <div class="dash-budget-row card" data-require="full">
+            <h3>Budget this period</h3>
+            <p class="big-number" id="dash-budget">—</p>
+            <p class="muted">Spent: <span id="dash-spent">—</span> · Remaining: <span id="dash-remaining">—</span></p>
+            <div class="progress-bar"><div class="progress-fill" id="dash-progress" style="width:0%"></div></div>
+          </div>
+          <div class="dash-grid-2">
+            <div class="card">
+              <h3>Today's menu</h3>
+              <div id="dash-today-menu" class="dash-today-menu"></div>
+            </div>
+            <div class="card">
+              <h3>Kitchen activity</h3>
+              <ul class="activity-feed" id="dash-activity"></ul>
+            </div>
+          </div>
+          <div class="dash-grid-2">
+            <div class="card">
+              <h3>Alerts snapshot</h3>
+              <ul class="dash-alert-snap" id="dash-alert-snap"></ul>
+            </div>
+            <div class="card" data-require="full">
+              <h3>Spend last 7 days</h3>
+              <div class="week-chart" id="dash-week-chart"></div>
+            </div>
+          </div>
+          <div class="card dash-quick chef-dash-note is-hidden" id="chef-limited-note">
+            <p class="muted"><strong>Chef (operational)</strong> — you can receive stock, prepare meals, and view menus &amp; alerts. Ask an admin for recipe edits, budget, or user accounts.</p>
+          </div>
+          <div class="card dash-quick">
+            <h3>Quick actions</h3>
+            <div class="quick-actions">
+              <button type="button" class="btn secondary quick-tab" data-tab="inventory">Inventory</button>
+              <button type="button" class="btn secondary quick-tab" data-tab="menu">Menu planner</button>
+              <button type="button" class="btn secondary quick-tab" data-tab="procurement" data-require="full">Procurement</button>
+              <button type="button" class="btn secondary quick-tab" data-tab="prepare">Prepare meal</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="inventory" class="panel">
+          <h2 class="panel-title">Inventory</h2>
+          <div class="toolbar" data-require="full">
+            <button type="button" class="btn primary" id="btn-new-ingredient">+ Add ingredient</button>
+          </div>
+          <div class="card inventory-split">
+            <h3>Receive stock</h3>
+            <p class="muted small-hint">Log physical intake; optional expiry for school traceability alerts.</p>
+            <form id="form-receive" class="inline-form grid-form">
+              <select id="receive-ingredient" required></select>
+              <input type="number" id="receive-qty" min="1" step="1" placeholder="Qty" required />
+              <input type="date" id="receive-expiry" title="Expiry (optional)" />
+              <input type="text" id="receive-note" placeholder="Note (delivery ref…)" />
+              <button type="submit" class="btn primary">Receive</button>
+            </form>
+            <h3>Record waste / spoilage</h3>
+            <form id="form-waste" class="inline-form grid-form">
+              <select id="waste-ingredient" required></select>
+              <input type="number" id="waste-qty" min="1" step="1" placeholder="Qty lost" required />
+              <input type="text" id="waste-note" placeholder="Reason" />
+              <button type="submit" class="btn secondary">Log waste</button>
+            </form>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Unit</th>
+                  <th>Stock</th>
+                  <th>Allergens</th>
+                  <th>Min / Max</th>
+                  <th>Cost/unit</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="inventory-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="meals" class="panel">
+          <h2 class="panel-title">Meals</h2>
+          <div class="toolbar" data-require="full">
+            <button type="button" class="btn primary" id="btn-new-meal">+ Add meal</button>
+          </div>
+          <div class="cards-grid" id="meals-list"></div>
+        </section>
+
+        <section id="menu" class="panel">
+          <h2 class="panel-title">Menu planner</h2>
+          <p class="muted menu-intro">Monday–Saturday only (Sunday excluded). Children see breakfast, lunch, and dessert; staff and directors see breakfast and lunch only. <strong>Saturday</strong> — staff and directors only.</p>
+          <div class="menu-toolbar">
+            <label for="menu-day-select">Day</label>
+            <select id="menu-day-select" class="menu-day-select">
+              <option value="mon">Monday</option>
+              <option value="tue">Tuesday</option>
+              <option value="wed">Wednesday</option>
+              <option value="thu">Thursday</option>
+              <option value="fri">Friday</option>
+              <option value="sat">Saturday</option>
+            </select>
+          </div>
+          <div id="menu-board" class="menu-board"></div>
+        </section>
+
+        <section id="prepare" class="panel">
+          <h2 class="panel-title">Prepare meal</h2>
+          <p class="muted">Preparing deducts stock (FIFO lots where recorded), writes an audit line, and records cost against your budget.</p>
+          <div class="prepare-form">
+            <label>Meal</label>
+            <select id="prepare-meal"></select>
+            <label>Portions</label>
+            <input type="number" id="prepare-qty" min="1" value="1" />
+            <div class="cost-preview" id="prepare-cost-preview"></div>
+            <button type="button" class="btn primary" id="btn-prepare">Prepare &amp; deduct</button>
+            <div class="message" id="prepare-message"></div>
+          </div>
+        </section>
+
+        <section id="procurement" class="panel">
+          <h2 class="panel-title">Procurement</h2>
+          <p class="muted">Record money spent with suppliers. When goods arrive, use <strong>Inventory → Receive stock</strong> so quantities and expiry alerts stay accurate.</p>
+          <div class="card">
+            <h3>Record purchase</h3>
+            <form id="inventory-purchase-form" class="inline-form grid-form">
+              <input type="number" id="purchase-amount" step="1" min="0" placeholder="Amount (UGX)" required />
+              <input type="text" id="purchase-supplier" placeholder="Supplier name" />
+              <input type="text" id="purchase-note" placeholder="Note (invoice #, items…)" />
+              <input type="datetime-local" id="purchase-date" />
+              <button type="submit" class="btn primary">Record purchase</button>
+            </form>
+            <div class="table-wrap table-wrap-tight">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Amount</th>
+                    <th>Supplier</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-purchases-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="budget" class="panel">
+          <h2 class="panel-title">Budget &amp; costs</h2>
+          <div class="budget-setup">
+            <h3>Current period</h3>
+            <div id="budget-current"></div>
+            <h3>Set budget period</h3>
+            <form id="budget-form">
+              <label>Start date</label>
+              <input type="date" id="budget-start" required />
+              <label>End date</label>
+              <input type="date" id="budget-end" required />
+              <label>Amount (UGX)</label>
+              <input type="number" id="budget-amount" step="1" min="0" required />
+              <button type="submit" class="btn primary">Save period</button>
+            </form>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Meal</th>
+                  <th>Portions</th>
+                  <th>Cost (UGX)</th>
+                </tr>
+              </thead>
+              <tbody id="budget-preps-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="serving" class="panel">
+          <h2 class="panel-title">Serving &amp; attendance</h2>
+          <p class="muted">Planned portions feed the dashboard. Served portions are optional for end-of-day reconciliation.</p>
+          <div class="card">
+            <label for="serving-date">Date</label>
+            <input type="date" id="serving-date" />
+            <table class="data-table serving-table">
+              <thead>
+                <tr>
+                  <th>Meal</th>
+                  <th>Audience</th>
+                  <th>Planned</th>
+                  <th>Served (optional)</th>
+                </tr>
+              </thead>
+              <tbody id="serving-tbody"></tbody>
+            </table>
+            <button type="button" class="btn primary" id="btn-save-servings">Save day</button>
+          </div>
+        </section>
+
+        <section id="reports" class="panel">
+          <h2 class="panel-title">Reports — stock audit</h2>
+          <p class="muted">Recent inventory movements (receive, prepare, waste, adjust).</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Type</th>
+                  <th>Ingredient</th>
+                  <th>Change</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="reports-movements-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="alerts" class="panel">
+          <h2 class="panel-title">Alerts</h2>
+          <div class="alerts-grid">
+            <div class="card alert-low">
+              <h3>Low stock</h3>
+              <ul id="alerts-low"></ul>
+            </div>
+            <div class="card alert-surplus">
+              <h3>Surplus</h3>
+              <ul id="alerts-surplus"></ul>
+            </div>
+            <div class="card alert-expiry">
+              <h3>Expiring within 7 days</h3>
+              <ul id="alerts-expiring"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="panel">
+          <h2 class="panel-title">Settings</h2>
+          <div class="card">
+            <h3>Signed in</h3>
+            <p id="settings-account-line" class="muted">—</p>
+          </div>
+          <div class="card" data-require="admin">
+            <h3>User accounts</h3>
+            <p class="muted small-hint">Create logins for chefs. Chefs can have <strong>full kitchen</strong> (recipes, budget, procurement) or <strong>operational only</strong> (prepare, receive, view menus &amp; alerts).</p>
+            <form id="form-new-user" class="inline-form grid-form user-create-form">
+              <input type="text" id="new-user-username" placeholder="Username" required autocomplete="off" />
+              <input type="password" id="new-user-password" placeholder="Password" required autocomplete="new-password" />
+              <input type="text" id="new-user-display" placeholder="Display name" />
+              <select id="new-user-role">
+                <option value="chef">Chef</option>
+                <option value="admin">Admin</option>
+              </select>
+              <label class="checkbox-inline"><input type="checkbox" id="new-user-full" checked /> Full kitchen access (chefs only)</label>
+              <button type="submit" class="btn primary">Create account</button>
+            </form>
+            <div class="table-wrap table-wrap-tight">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Access</th>
+                    <th>Active</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="users-admin-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" data-require="full">
+            <h3>Pupil allergy watch list</h3>
+            <p class="muted small-hint">Match allergen tags to ingredients. Cross-check menus before service.</p>
+            <form id="form-pupil-allergy" class="inline-form grid-form">
+              <input type="text" id="pupil-name" placeholder="Pupil name" required />
+              <input type="text" id="pupil-tags" placeholder="Allergens (comma separated, e.g. milk, peanuts)" />
+              <input type="text" id="pupil-notes" placeholder="Notes" />
+              <button type="submit" class="btn primary">Add pupil</button>
+            </form>
+            <ul class="pupil-list" id="pupil-list"></ul>
+          </div>
+          <div class="card" data-require="full">
+            <h3>Temperature check</h3>
+            <form id="form-temp" class="inline-form grid-form">
+              <input type="text" id="temp-zone" placeholder="Zone (e.g. Walk-in fridge)" required />
+              <input type="number" id="temp-c" step="0.1" placeholder="°C" />
+              <label class="checkbox-inline"><input type="checkbox" id="temp-ok" checked /> OK</label>
+              <input type="text" id="temp-notes" placeholder="Notes" />
+              <button type="submit" class="btn secondary">Log check</button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay"></div>
+  <div class="modal" id="modal-ingredient">
+    <div class="modal-head">
+      <h3 id="modal-ingredient-title">Add ingredient</h3>
+      <button type="button" class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <form id="form-ingredient">
+      <input type="hidden" id="ingredient-id" />
+      <label>Name</label>
+      <input type="text" id="ingredient-name" required />
+      <label>Unit</label>
+      <select id="ingredient-unit"></select>
+      <label>Cost per unit (UGX)</label>
+      <input type="number" id="ingredient-cost" step="1" min="0" value="0" />
+      <label>Current stock</label>
+      <input type="number" id="ingredient-stock" step="1" min="0" value="0" />
+      <label>Min stock</label>
+      <input type="number" id="ingredient-min" step="1" min="0" value="0" />
+      <label>Max stock</label>
+      <input type="number" id="ingredient-max" step="1" min="0" placeholder="Optional" />
+      <fieldset class="allergen-fieldset">
+        <legend>Allergen flags (school safety)</legend>
+        <div class="allergen-grid" id="ingredient-allergen-grid"></div>
+      </fieldset>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary modal-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+  <div class="modal modal-wide" id="modal-meal">
+    <div class="modal-head">
+      <h3 id="modal-meal-title">Add meal</h3>
+      <button type="button" class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <form id="form-meal" novalidate>
+      <input type="hidden" id="meal-id" />
+      <label>Meal name</label>
+      <input type="text" id="meal-name" />
+      <label>Description</label>
+      <textarea id="meal-description" rows="2"></textarea>
+      <label>Category</label>
+      <select id="meal-category">
+        <option value="breakfast">Breakfast</option>
+        <option value="lunch">Lunch</option>
+        <option value="dessert">Dessert</option>
+      </select>
+      <label>For</label>
+      <select id="meal-audience">
+        <option value="students">Children (students)</option>
+        <option value="staff">Teachers / staff</option>
+        <option value="directors">Directors</option>
+      </select>
+      <fieldset class="schedule-fieldset">
+        <legend>Day &amp; audience</legend>
+        <p class="muted small-hint">Each meal is for <strong>one</strong> group and <strong>one</strong> day.</p>
+        <label for="meal-schedule-day">Day (Mon–Sat)</label>
+        <select id="meal-schedule-day" class="meal-day-select">
+          <option value="">— Pick a day —</option>
+          <option value="mon">Monday</option>
+          <option value="tue">Tuesday</option>
+          <option value="wed">Wednesday</option>
+          <option value="thu">Thursday</option>
+          <option value="fri">Friday</option>
+          <option value="sat">Saturday</option>
+        </select>
+      </fieldset>
+      <div class="meal-ingredients-editor">
+        <h4>Ingredients & quantities</h4>
+        <div id="meal-ingredients-list"></div>
+        <button type="button" class="btn secondary" id="btn-add-meal-ingredient">+ Add ingredient</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary modal-cancel">Cancel</button>
+        <button type="button" class="btn primary" id="btn-save-meal">Save meal</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('auth-redirect-btn')?.addEventListener('click', function () {
+      if (typeof window.__kitchenGoUnifiedLogin === 'function') window.__kitchenGoUnifiedLogin();
+    });
+  </script>
+</body>
+</html>
