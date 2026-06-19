@@ -82,7 +82,7 @@ app.use('/api', await proxyRequest(UNIFORM_API_PORT));
  * Kitchen API proxy
  * All requests to /kitchen/api/* are routed to the Kitchen backend
  */
-app.use('/kitchen/api', await proxyRequest(KITCHEN_API_PORT, '/kitchen'));
+app.use('/kitchen/api', await proxyRequest(KITCHEN_API_PORT));
 
 /**
  * Serve static frontend (React build)

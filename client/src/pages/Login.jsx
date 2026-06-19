@@ -15,11 +15,18 @@ const REMEMBER_KEYS = {
  * - Production: Kitchen on /kitchen/api (same domain)
  */
 const kitchenEnvUrl = import.meta.env.VITE_KITCHEN_URL;
+const kitchenUrlCandidate = kitchenEnvUrl && String(kitchenEnvUrl).trim();
+const isValidKitchenUrl =
+  kitchenUrlCandidate &&
+  !kitchenUrlCandidate.includes('your-app') &&
+  !kitchenUrlCandidate.includes('<your') &&
+  /^https?:\/\//.test(kitchenUrlCandidate);
 const KITCHEN_BASE_URL =
-  (kitchenEnvUrl && String(kitchenEnvUrl).trim()) ||
-  (window.location.origin === 'http://localhost:3000'
+  isValidKitchenUrl
+    ? kitchenUrlCandidate
+    : window.location.origin === 'http://localhost:3000'
     ? 'http://localhost:3005'
-    : window.location.origin);
+    : window.location.origin;
 
 const HEALTH_TIMEOUT_MS = 2200;
 
