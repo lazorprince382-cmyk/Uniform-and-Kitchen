@@ -13,7 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UNIFORM_PORT = process.env.UNIFORM_API_PORT || 5001;
 const KITCHEN_PORT = process.env.KITCHEN_API_PORT || 5002;
 const GATEWAY_PORT = process.env.PORT || 3000;
-
+const UNIFORM_DATABASE_URL = process.env.UNIFORM_DATABASE_URL || process.env.DATABASE_URL;
+const KITCHEN_DATABASE_URL = process.env.KITCHEN_DATABASE_URL || process.env.DATABASE_URL;
 console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║       Starting Unified System Services                      ║
@@ -29,6 +30,7 @@ const uniformProcess = spawn('node', ['server/src/index.js'], {
   env: {
     ...process.env,
     PORT: UNIFORM_PORT,
+    DATABASE_URL: UNIFORM_DATABASE_URL,
   },
   stdio: 'inherit',
 });
@@ -47,6 +49,7 @@ const kitchenProcess = spawn('node', ['kitchen/server.js'], {
   env: {
     ...process.env,
     PORT: KITCHEN_PORT,
+    DATABASE_URL: KITCHEN_DATABASE_URL,
   },
   stdio: 'inherit',
 });
