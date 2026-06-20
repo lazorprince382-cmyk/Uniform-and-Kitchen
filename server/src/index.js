@@ -15,7 +15,6 @@ import reportsRoutes from './routes/reports.js';
 import systemRoutes from './routes/system.js';
 import { authenticate, attachUser } from './middleware/auth.js';
 import { ensureGenderSchema } from './db/ensure-gender.js';
-import { spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -41,29 +40,14 @@ app.use('/api/system', authenticate, systemRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
-async function initAndStart() {
-  try {
-    await ensureGenderSchema();
-  } catch (err) {
+// Schema check (should not fail since setup runs before server starts)
+ensureGenderSchema()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
     console.error('Database gender schema check failed:', err.message);
-    console.log('Attempting to run DB setup script to create missing tables...');
-    try {
-      await new Promise((resolve, reject) => {
-        const p = spawn('node', ['server/src/db/setup.js'], { stdio: 'inherit' });
-        p.on('error', (e) => reject(e));
-        p.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('Setup script exited with code ' + code))));
-      });
-      console.log('DB setup completed, re-checking schema...');
-      await ensureGenderSchema();
-    } catch (setupErr) {
-      console.error('Schema setup or re-check failed:', setupErr.message);
-      process.exit(1);
-    }
-  }
-
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    process.exit(1);
   });
-}
-
-initAndStart();

@@ -86,9 +86,35 @@ async function runKitchenInit() {
 
 async function startServices() {
   /**
-   * Start Uniform Backend
+   * Initialize Uniform database and start Uniform Backend
    */
-  console.log(`📚 Starting Uniform API on port ${UNIFORM_PORT}...`);
+  console.log(`📚 Initializing Uniform database and starting Uniform API on port ${UNIFORM_PORT}...`);
+  try {
+    await new Promise((resolve, reject) => {
+      console.log('🔧 Initializing Uniform database schema...');
+      const setupProcess = spawn('node', ['server/src/db/setup.js'], {
+        cwd: __dirname,
+        env: {
+          ...process.env,
+          DATABASE_URL: UNIFORM_DATABASE_URL,
+        },
+        stdio: 'inherit',
+      });
+
+      setupProcess.on('error', (err) => reject(err));
+      setupProcess.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Uniform setup script exited with code ${code}`));
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error('❌ Uniform database initialization failed:', err.message);
+    process.exit(1);
+  }
+
   const uniformProcess = spawn('node', ['server/src/index.js'], {
     cwd: __dirname,
     env: {
