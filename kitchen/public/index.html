@@ -28,6 +28,10 @@
     }
   </style>
   <script src="config.js"></script>
+  <!-- A regular stylesheet link blocks first paint and prevents the Kitchen
+       dashboard from briefly appearing as unstyled HTML. This relative URL
+       works both at /kitchen/ on Render and at / in standalone development. -->
+  <link rel="stylesheet" href="styles.css" />
   <script>
     (function () {
       function kitchenAssetBase() {
@@ -38,14 +42,7 @@
         return '';
       }
       window.__kitchenAssetBase = kitchenAssetBase;
-      var css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = kitchenAssetBase() + '/styles.css';
-      document.head.appendChild(css);
-    })();
-  </script>
-  <script>
-    (function () {
+
       function unifiedLoginUrl() {
         const fromConfig =
           window.KITCHEN_UNIFIED_LOGIN_URL != null ? String(window.KITCHEN_UNIFIED_LOGIN_URL).trim() : '';
