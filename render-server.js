@@ -37,8 +37,15 @@ app.get('/health', (req, res) => {
 async function proxyRequest(targetPort, pathPrefix = '') {
   return async (req, res) => {
     try {
-      const sourcePath = pathPrefix ? req.originalUrl : req.url;
-      const targetPath = pathPrefix ? sourcePath.replace(pathPrefix, '') : sourcePath;
+      // `req.url` has the Express mount path removed. For example, a request to
+      // /api/health reaches this middleware as /health, but the Uniform server
+      // actually exposes /api/health. Always start with originalUrl so mounted
+      // API prefixes survive proxying. Kitchen is the only service whose public
+      // /kitchen prefix must be stripped before forwarding.
+      const sourcePath = req.originalUrl;
+      const targetPath = pathPrefix && sourcePath.startsWith(pathPrefix)
+        ? sourcePath.slice(pathPrefix.length) || '/'
+        : sourcePath;
       const targetUrl = `http://localhost:${targetPort}${targetPath}`;
 
       const fetchOptions = {
