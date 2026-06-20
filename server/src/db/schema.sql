@@ -65,6 +65,19 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Per-size inventory. Keep this in the base schema because Render runs
+-- schema.sql on every deploy, while one-off migration scripts are not run by
+-- the unified production starter.
+CREATE TABLE IF NOT EXISTS inventory_stock (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  size VARCHAR(20) NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(product_id, size)
+);
+
 CREATE TABLE IF NOT EXISTS stock_transactions (
   id SERIAL PRIMARY KEY,
   product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -137,8 +150,13 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Upgrade databases created before size-based inventory was introduced.
+ALTER TABLE stock_transactions ADD COLUMN IF NOT EXISTS size VARCHAR(20);
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size VARCHAR(20);
+
 CREATE INDEX IF NOT EXISTS idx_students_parent ON students(parent_id);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_product ON inventory_stock(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_parent ON orders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_orders_student ON orders(student_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
