@@ -3,7 +3,7 @@
  * Routes both Uniform and Kitchen services through a single Express server
  * - Frontend served at root /
  * - Uniform API at /api/*
- * - Kitchen API at /kitchen/api/*
+ * - Kitchen application and API at /kitchen/*
  */
 
 import express from 'express';
@@ -87,10 +87,13 @@ async function proxyRequest(targetPort, pathPrefix = '') {
 app.use('/api', await proxyRequest(UNIFORM_API_PORT));
 
 /**
- * Kitchen API proxy
- * All requests to /kitchen/api/* are routed to the Kitchen backend
+ * Kitchen application proxy
+ * Route the entire /kitchen subtree to the Kitchen service. The Kitchen
+ * server owns both its public frontend and /api routes; proxying only its API
+ * would make /kitchen/ fall through to the Uniform React SPA.
  */
-app.use('/kitchen/api', await proxyRequest(KITCHEN_API_PORT, '/kitchen'));
+app.get('/kitchen', (req, res) => res.redirect(308, '/kitchen/'));
+app.use('/kitchen', await proxyRequest(KITCHEN_API_PORT, '/kitchen'));
 
 /**
  * Serve static frontend (React build)
@@ -103,7 +106,7 @@ app.use(express.static(frontendPath));
  */
 app.get('*', (req, res) => {
   // Don't serve HTML for actual API errors
-  if (req.path.startsWith('/api') || req.path.startsWith('/kitchen/api')) {
+  if (req.path.startsWith('/api') || req.path.startsWith('/kitchen')) {
     return res.status(404).json({ error: 'Not found' });
   }
   res.sendFile(path.join(frontendPath, 'index.html'));
@@ -132,7 +135,7 @@ app.listen(PORT, () => {
 
 Routing:
   /api/*              → Uniform Backend
-  /kitchen/api/*      → Kitchen Backend
+  /kitchen/*          → Kitchen Backend (frontend and API)
   /                   → React Frontend
 
   `);
