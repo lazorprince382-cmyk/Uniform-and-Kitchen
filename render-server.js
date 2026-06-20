@@ -92,7 +92,6 @@ app.use('/api', await proxyRequest(UNIFORM_API_PORT));
  * server owns both its public frontend and /api routes; proxying only its API
  * would make /kitchen/ fall through to the Uniform React SPA.
  */
-app.get('/kitchen', (req, res) => res.redirect(308, '/kitchen/'));
 app.use('/kitchen', await proxyRequest(KITCHEN_API_PORT, '/kitchen'));
 
 /**
