@@ -16,7 +16,6 @@ import systemRoutes from './routes/system.js';
 import { authenticate, attachUser } from './middleware/auth.js';
 import { ensureGenderSchema } from './db/ensure-gender.js';
 import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
