@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
 import { categoriesRouter, productsRouter } from './routes/crud.js';
@@ -14,8 +16,10 @@ import systemRoutes from './routes/system.js';
 import { authenticate, attachUser } from './middleware/auth.js';
 import { ensureGenderSchema } from './db/ensure-gender.js';
 import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
