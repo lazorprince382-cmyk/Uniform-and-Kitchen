@@ -134,31 +134,34 @@ async function startServices() {
    * Wait for both backends to be ready, then start gateway
    */
   setTimeout(() => {
-  console.log(`\n🌐 Starting Gateway on port ${GATEWAY_PORT}...`);
-  const gatewayProcess = spawn('node', ['render-server.js'], {
-    cwd: __dirname,
-    env: {
-      ...process.env,
-      PORT: GATEWAY_PORT,
-      UNIFORM_API_PORT: UNIFORM_PORT,
-      KITCHEN_API_PORT: KITCHEN_PORT,
-    },
-    stdio: 'inherit',
-  });
+    console.log(`\n🌐 Starting Gateway on port ${GATEWAY_PORT}...`);
+    const gatewayProcess = spawn('node', ['render-server.js'], {
+      cwd: __dirname,
+      env: {
+        ...process.env,
+        PORT: GATEWAY_PORT,
+        UNIFORM_API_PORT: UNIFORM_PORT,
+        KITCHEN_API_PORT: KITCHEN_PORT,
+      },
+      stdio: 'inherit',
+    });
 
-  gatewayProcess.on('error', (err) => {
-    console.error('❌ Gateway process error:', err.message);
-    process.exit(1);
-  });
+    gatewayProcess.on('error', (err) => {
+      console.error('❌ Gateway process error:', err.message);
+      process.exit(1);
+    });
 
-  /**
-   * Graceful shutdown
-   */
-  process.on('SIGTERM', () => {
-    console.log('\n⏹️  Shutting down services...');
-    uniformProcess.kill();
-    kitchenProcess.kill();
-    gatewayProcess.kill();
-    process.exit(0);
-  });
-}, 2000);
+    /**
+     * Graceful shutdown
+     */
+    process.on('SIGTERM', () => {
+      console.log('\n⏹️  Shutting down services...');
+      uniformProcess.kill();
+      kitchenProcess.kill();
+      gatewayProcess.kill();
+      process.exit(0);
+    });
+  }, 2000);
+}
+
+startServices();
