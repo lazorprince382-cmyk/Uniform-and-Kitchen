@@ -22,7 +22,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SESSION_SECRET =
   process.env.SESSION_SECRET || 'kitchen-dev-secret-change-in-production';
 const SESSION_MAX_AGE_MS =
-  parseInt(process.env.SESSION_MAX_AGE_MS, 10) || 10 * 60 * 1000;
+  parseInt(process.env.SESSION_MAX_AGE_MS, 10) || 30 * 60 * 1000;
 
 app.set('trust proxy', 1);
 
@@ -41,6 +41,67 @@ const pool = new Pool(
 pool.on('error', err => {
   console.error('[kitchen] database pool error:', err.message || err);
 });
+
+// Persist login sessions in PostgreSQL. Render may restart the Node process at
+// any time, which wipes express-session's default MemoryStore and previously
+// caused the Kitchen UI to redirect to login while users were navigating.
+const sessionTableReady = pool.query(`
+  CREATE TABLE IF NOT EXISTS kitchen_sessions (
+    sid VARCHAR(255) PRIMARY KEY,
+    sess JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  )
+`);
+
+class PostgresSessionStore extends session.Store {
+  get(sid, callback) {
+    sessionTableReady
+      .then(() => pool.query(
+        `SELECT sess FROM kitchen_sessions WHERE sid = $1 AND expires_at > NOW()`,
+        [sid]
+      ))
+      .then(({ rows }) => callback(null, rows[0]?.sess || null))
+      .catch(callback);
+  }
+
+  set(sid, sess, callback = () => {}) {
+    const expiresAt = sess.cookie?.expires
+      ? new Date(sess.cookie.expires)
+      : new Date(Date.now() + SESSION_MAX_AGE_MS);
+    sessionTableReady
+      .then(() => pool.query(
+        `INSERT INTO kitchen_sessions (sid, sess, expires_at)
+         VALUES ($1, $2::jsonb, $3)
+         ON CONFLICT (sid) DO UPDATE
+         SET sess = EXCLUDED.sess, expires_at = EXCLUDED.expires_at`,
+        [sid, JSON.stringify(sess), expiresAt]
+      ))
+      .then(() => callback())
+      .catch(callback);
+  }
+
+  destroy(sid, callback = () => {}) {
+    sessionTableReady
+      .then(() => pool.query(`DELETE FROM kitchen_sessions WHERE sid = $1`, [sid]))
+      .then(() => callback())
+      .catch(callback);
+  }
+
+  touch(sid, sess, callback = () => {}) {
+    const expiresAt = sess.cookie?.expires
+      ? new Date(sess.cookie.expires)
+      : new Date(Date.now() + SESSION_MAX_AGE_MS);
+    sessionTableReady
+      .then(() => pool.query(
+        `UPDATE kitchen_sessions SET expires_at = $2 WHERE sid = $1`,
+        [sid, expiresAt]
+      ))
+      .then(() => callback())
+      .catch(callback);
+  }
+}
+
+const sessionStore = new PostgresSessionStore();
 
 app.use(
   cors({
@@ -82,6 +143,7 @@ app.use(
   session({
     name: 'kitchen.sid',
     secret: SESSION_SECRET,
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     rolling: true,

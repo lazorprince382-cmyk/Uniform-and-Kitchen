@@ -30,8 +30,8 @@ function resolveUnifiedLoginUrl() {
 
 const UNIFIED_LOGIN_URL = resolveUnifiedLoginUrl();
 
-/** Sign out after 10 minutes without mouse/keyboard/touch activity */
-const INACTIVITY_MS = 10 * 60 * 1000;
+/** Sign out after 30 minutes without mouse/keyboard/touch activity. */
+const INACTIVITY_MS = 30 * 60 * 1000;
 let inactivityTimer = null;
 let inactivityWatching = false;
 
