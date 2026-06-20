@@ -21,13 +21,28 @@ const KITCHEN_DATABASE_URL =
   process.env.KITCHEN_DATABASE_URL ||
   process.env.UNIFORM_DATABASE_URL ||
   process.env.DATABASE_URL;
+
+function maskDbUrl(url) {
+  if (!url) return 'missing';
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.username}:*****@${parsed.hostname}:${parsed.port}${parsed.pathname}`;
+  } catch (err) {
+    return 'invalid';
+  }
+}
+
 console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║       Starting Unified System Services                      ║
 ╚════════════════════════════════════════════════════════════╝
 `);
-console.log(`Database URL present for Uniform: ${Boolean(UNIFORM_DATABASE_URL)}`);
-console.log(`Database URL present for Kitchen: ${Boolean(KITCHEN_DATABASE_URL)}`);
+console.log(`Uniform API port: ${UNIFORM_PORT}`);
+console.log(`Kitchen API port: ${KITCHEN_PORT}`);
+console.log(`Gateway port: ${GATEWAY_PORT}`);
+console.log(`Uniform DB URL: ${maskDbUrl(UNIFORM_DATABASE_URL)}`);
+console.log(`Kitchen DB URL: ${maskDbUrl(KITCHEN_DATABASE_URL)}`);
+console.log(`Shared DB in use: ${UNIFORM_DATABASE_URL === KITCHEN_DATABASE_URL}`);
 
 /**
  * Start Uniform Backend

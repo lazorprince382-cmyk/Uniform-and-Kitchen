@@ -34,10 +34,10 @@ services:
           name: toks_uniform
           property: connectionString
       
-      # Kitchen Backend Database
+      # Kitchen Backend Database (share the same DB on the free plan)
       - key: KITCHEN_DATABASE_URL
         fromDatabase:
-          name: kitchen_db
+          name: toks_uniform
           property: connectionString
       
       # Secrets (change these!)
