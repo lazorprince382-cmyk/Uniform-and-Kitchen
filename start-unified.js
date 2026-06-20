@@ -13,13 +13,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UNIFORM_PORT = process.env.UNIFORM_API_PORT || 5001;
 const KITCHEN_PORT = process.env.KITCHEN_API_PORT || 5002;
 const GATEWAY_PORT = process.env.PORT || 3000;
-const UNIFORM_DATABASE_URL = process.env.UNIFORM_DATABASE_URL || process.env.DATABASE_URL;
-const KITCHEN_DATABASE_URL = process.env.KITCHEN_DATABASE_URL || process.env.DATABASE_URL;
+const UNIFORM_DATABASE_URL =
+  process.env.UNIFORM_DATABASE_URL ||
+  process.env.KITCHEN_DATABASE_URL ||
+  process.env.DATABASE_URL;
+const KITCHEN_DATABASE_URL =
+  process.env.KITCHEN_DATABASE_URL ||
+  process.env.UNIFORM_DATABASE_URL ||
+  process.env.DATABASE_URL;
 console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║       Starting Unified System Services                      ║
 ╚════════════════════════════════════════════════════════════╝
 `);
+console.log(`Database URL present for Uniform: ${Boolean(UNIFORM_DATABASE_URL)}`);
+console.log(`Database URL present for Kitchen: ${Boolean(KITCHEN_DATABASE_URL)}`);
 
 /**
  * Start Uniform Backend
