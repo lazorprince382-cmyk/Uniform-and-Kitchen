@@ -37,7 +37,8 @@ app.get('/health', (req, res) => {
 async function proxyRequest(targetPort, pathPrefix = '') {
   return async (req, res) => {
     try {
-      const targetPath = pathPrefix ? req.url.replace(pathPrefix, '') : req.url;
+      const sourcePath = pathPrefix ? req.originalUrl : req.url;
+      const targetPath = pathPrefix ? sourcePath.replace(pathPrefix, '') : sourcePath;
       const targetUrl = `http://localhost:${targetPort}${targetPath}`;
 
       const fetchOptions = {
@@ -82,7 +83,7 @@ app.use('/api', await proxyRequest(UNIFORM_API_PORT));
  * Kitchen API proxy
  * All requests to /kitchen/api/* are routed to the Kitchen backend
  */
-app.use('/kitchen/api', await proxyRequest(KITCHEN_API_PORT));
+app.use('/kitchen/api', await proxyRequest(KITCHEN_API_PORT, '/kitchen'));
 
 /**
  * Serve static frontend (React build)
