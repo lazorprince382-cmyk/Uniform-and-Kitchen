@@ -10,9 +10,8 @@ const REMEMBER_KEYS = {
 };
 
 /**
- * For unified gateway deployment:
- * - Development: Kitchen on different port (localhost:3005)
- * - Production: Kitchen on /kitchen/api (same domain)
+ * Kitchen is served by the unified gateway under /kitchen by default.
+ * VITE_KITCHEN_URL is only for an explicitly separate Kitchen host.
  */
 const kitchenEnvUrl = import.meta.env.VITE_KITCHEN_URL;
 const kitchenUrlCandidate = kitchenEnvUrl && String(kitchenEnvUrl).trim();
@@ -23,10 +22,8 @@ const isValidKitchenUrl =
   /^https?:\/\//.test(kitchenUrlCandidate);
 const KITCHEN_BASE_URL =
   isValidKitchenUrl
-    ? kitchenUrlCandidate
-    : window.location.origin === 'http://localhost:3000'
-    ? 'http://localhost:3005'
-    : window.location.origin;
+    ? kitchenUrlCandidate.replace(/\/+$/, '')
+    : `${window.location.origin}/kitchen`;
 
 const HEALTH_TIMEOUT_MS = 2200;
 
@@ -125,12 +122,7 @@ export default function Login() {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
       try {
-        // For unified gateway: use /kitchen/api/health
-        // For separate servers: use full URL
-        const kitchenHealth =
-          window.location.origin === 'http://localhost:3000'
-            ? `${KITCHEN_BASE_URL}/api/health`
-            : `${window.location.origin}/kitchen/api/health`;
+        const kitchenHealth = `${KITCHEN_BASE_URL}/api/health`;
         const res = await fetch(kitchenHealth, { signal: ctrl.signal });
         if (!res.ok) return false;
         const data = await res.json().catch(() => null);
@@ -190,12 +182,7 @@ export default function Login() {
         throw new Error('Kitchen server is offline. Start kitchen system and try again.');
       }
       
-      // For unified gateway deployment: use /kitchen/api
-      // For separate servers: use full KITCHEN_BASE_URL
-      const kitchenEndpoint =
-        window.location.origin === 'http://localhost:3000'
-          ? `${KITCHEN_BASE_URL}/api/auth/login`
-          : `${window.location.origin}/kitchen/api/auth/login`;
+      const kitchenEndpoint = `${KITCHEN_BASE_URL}/api/auth/login`;
       
       const res = await fetch(kitchenEndpoint, {
         method: 'POST',
@@ -240,10 +227,7 @@ export default function Login() {
       else localStorage.removeItem(key);
 
       // After login, redirect to kitchen app
-      const kitchenHome =
-        window.location.origin === 'http://localhost:3000'
-          ? `${KITCHEN_BASE_URL}/?fresh=1`
-          : `${window.location.origin}/kitchen/?fresh=1`;
+      const kitchenHome = `${KITCHEN_BASE_URL}/?fresh=1`;
       window.location.assign(kitchenHome);
     } catch (err) {
       setError(err.message || 'Kitchen login failed');
